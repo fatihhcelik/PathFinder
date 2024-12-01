@@ -3,9 +3,10 @@
 PathFinder is a tool designed to visualize call graphs of source code. It parses source files to extract function declarations and calls, and then generates a visual representation of the call graph. This tool is particularly useful for understanding the structure and flow of the applications, especially in complex codebases. Additionally, the main reason I developed this application/extension is to assist me during my secure code review process. For detailed usage scenarios, please refer to the 'Use-Cases' section.
 
 <p align="center">
-  <img src="/demo/sc.png" alt="animated"/>
+  <a href="https://www.youtube.com/watch?v=ibJwDh1wq7Y>" target="_blank">
+    <img src="/demo/sc.png" alt="animated" />
+  </a>
 </p>
-
 
 ## Support Languages
 
