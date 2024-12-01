@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Go Call Graph</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+	<style>
+	body {
+        background-color: #f4f4f9; 
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body.dark-mode {
+        background-color: #333;
+        color: #f4f4f9;
+    }
+
+		#graph {
+			width: 100vw;
+			height: 100vh;
+		}
+
+		.node rect {
+			fill: white;
+			stroke-width: 2px;
+			rx: 5;
+			ry: 5;
+			transition: all 0.2s ease; 
+		}
+		.node.no-args rect {
+			stroke: #4285f4;
+		}
+		.node.has-args rect {
+			stroke: #f4a742;
+		}
+		 .node.endpoint rect {
+			stroke: red; 
+		}
+		.node text {
+			font-family: 'Monaco', monospace;
+			text-anchor: middle;
+			pointer-events: none;
+		}
+		.node .function-name {
+			font-size: 14px;
+			font-weight: bold;
+			fill: #333;
+		}
+		.link {
+			stroke: #999;
+			stroke-width: 1.5px;
+			stroke-opacity: 0.6;
+			marker-end: url(#arrowhead);
+		}
+		.tooltip {
+			position: absolute;
+			background: #333;
+			color: white;
+			padding: 10px;
+			border-radius: 5px;
+			font-size: 12px;
+			pointer-events: none;
+			opacity: 0;
+			transition: opacity 0.2s;
+		}
+		#search {
+			position: absolute;
+			top: 20px;
+			left: 20px;
+			padding: 10px;
+			border-radius: 8px;
+			border: 1px solid #ccc;
+			width: 300px;
+			font-size: 16px;
+			background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		}
+		#zoom-controls {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+			display: flex;
+			flex-direction: column;
+            gap: 10px;
+			z-index: 1000;
+		}
+		#zoom-controls button {
+			padding: 10px 15px;
+			background-color: #4285f4;
+			color: white;
+			border: none;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: background-color 0.3s ease, transform 0.2s ease;
+            font-size: 14px;
+		}
+		#zoom-controls button:hover {
+			background-color: #357ae8;
+            transform: translateY(-2px);
+		}
+		#zoom-controls button:active {
+			background-color: #2a65c7; 
+            transform: translateY(0);
+		}
+		.card {
+			background-color: #ffffff;
+			padding: 20px;
+			border-radius: 10px;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+			margin: 20px 0;
+			transition: box-shadow 0.3s ease;
+		}
+		.card:hover {
+			box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+		}
+
+        .call-selection-menu {
+    position: absolute;
+    background-color: #fff;  
+    border: 1px solid #ddd;  
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    max-width: 280px;
+    max-height: 350px;
+    overflow-y: auto;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+.call-option {
+    padding: 10px 15px;
+    cursor: pointer;
+    color: #333;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 5px;
+    margin: 5px 0;
+    font-weight: 500;
+}
+
+.call-option:hover {
+    background-color: #f1f1f1;  
+    color: #007bff; 
+}
+
+.call-option:active {
+    background-color: #e0e0e0;
+}
+
+.close-menu {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    background: none;
+    border: none;
+}
+
+.close-menu:hover {
+    color: #e74c3c; 
+}
+
+
+.call-selection-menu::-webkit-scrollbar {
+    width: 8px;  
+    background-color: transparent; 
+}
+
+.call-selection-menu::-webkit-scrollbar-thumb {
+    background-color: #007bff; 
+    border-radius: 10px;  
+    border: 2px solid #fff; 
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); 
+}
+
+.call-selection-menu::-webkit-scrollbar-thumb:hover {
+    background-color: #0056b3; 
+}
+
+.call-selection-menu::-webkit-scrollbar-track {
+    background: #f1f1f1; 
+    border-radius: 10px;
+}
+
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.call-selection-menu {
+    animation: fadeIn 0.3s ease-in-out; 
+}
+
+
+.custom-menu-style {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    z-index: 1000;
+    max-width: 300px;
+    max-height: 300px; 
+    overflow-y: auto;  
+    scrollbar-width: thin;  
+    scrollbar-color: #888 #e0e0e0; 
+}
+
+
+.custom-menu-style::-webkit-scrollbar {
+    width: 8px;
+    background-color: #f1f1f1;
+}
+
+.custom-menu-style::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 5px;
+}
+
+.custom-menu-style::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+}
+
+.custom-menu-style .close-menu {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+}
+
+	#show-endpoints {
+		position: absolute;
+		top: 80px;
+		left: 20px;
+		padding: 10px 15px;
+		background-color: #4285f4;
+		color: white;
+		border: none;
+		border-radius: 8px;
+		cursor: pointer;
+		transition: background-color 0.3s ease, transform 0.2s ease;
+		font-size: 14px;
+	}
+
+	#show-endpoints:hover {
+		background-color: #357ae8;
+		transform: translateY(-2px);
+	}
+
+	#show-endpoints:active {
+		background-color: #2a65c7;
+		transform: translateY(0);
+	}
+
+    #theme-toggle {
+        position: absolute;
+        top: 120px;
+        left: 20px;
+        padding: 10px 15px;
+        background-color: #4285f4;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        font-size: 14px;
+    }
+
+    #theme-toggle:hover {
+        background-color: #357ae8;
+        transform: translateY(-2px);
+    }
+
+    #theme-toggle:active {
+        background-color: #2a65c7;
+        transform: translateY(0);
+    }
+
+	#filter-controls {
+		position: absolute;
+		top: 10px;
+		left: 550px;
+		display: flex;
+		align-items: center;
+		z-index: 1000;
+	}
+	#filter-controls input {
+		padding: 5px;
+		border-radius: 5px;
+		border: 1px solid #ccc;
+		width: 50px;
+		font-size: 14px;
+		margin-right: 10px;
+	}
+	#filter-controls button {
+		padding: 5px 10px;
+		background-color: #4285f4;
+		color: white;
+		border: none;
+		border-radius: 5px;
+		cursor: pointer;
+		transition: background-color 0.3s ease;
+	}
+	#filter-controls button:hover {
+		background-color: #357ae8;
+	}
+	#filter-controls button:active {
+		background-color: #2a58b0;
+	}
+	#filter-controls label {
+    color: var(--label-color);
+}
+
+	#context-menu {
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        display: none;
+    }
+    #context-menu ul {
+        list-style: none;
+        margin: 0;
+        padding: 10px;
+    }
+    #context-menu ul li {
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    #context-menu ul li:hover {
+        background-color: #f0f0f0;
+    }
+
+	</style>
+</head>
+<body>
+	<div id="graph"></div>
+	<input type="text" id="search" placeholder="Search functions..." oninput="searchNode()">
+	<div id="zoom-controls">
+		<button onclick="zoomIn()">Zoom In</button>
+		<button onclick="zoomOut()">Zoom Out</button>
+		<button onclick="fitToScreen()">Fit to Screen</button>
+	</div>
+	<button id="show-endpoints" onclick="toggleEndpoints()">Show Only Endpoints</button>
+    <button id="theme-toggle" onclick="toggleTheme()">Dark Mode</button>
+	<div id="filter-controls">
+		<label for="call-threshold">Remove nodes called more than:</label>
+		<input type="number" id="call-threshold" placeholder="Enter a number">
+		<button onclick="filterNodes()">Filter Nodes</button>
+	</div>
+    <div id="context-menu">
+        <ul id="context-menu-list"></ul>
+    </div>
+	<script>
+        const data = {{data}};
+    
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+    
+        const svg = d3.select("#graph")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+    
+        const g = svg.append("g"); 
+    
+        svg.append("defs").append("marker")
+            .attr("id", "arrowhead")
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 40)
+            .attr("refY", 0)
+            .attr("markerWidth", 10)
+            .attr("markerHeight", 10)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", "#999");
+    
+        const simulation = d3.forceSimulation(data.nodes)
+            .force("link", d3.forceLink(data.edges)
+                .id(d => d.id)
+                .distance(200))
+            .force("charge", d3.forceManyBody().strength(-1500))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+    
+        let link = g.append("g")
+            .selectAll("line")
+            .data(data.edges)
+            .join("line")
+            .attr("class", "link");
+    
+        const tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "tooltip");
+    
+        let node = g.append("g")
+            .selectAll(".node")
+            .data(data.nodes)
+            .join("g")
+            .attr("class", d => d.args.length > 0 ? "node has-args" : (d.endpoint ? "node endpoint" : "node no-args"))
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+    
+        node.append("rect")
+            .attr("width", d => Math.max(120, d.name.length * 10 + 20))
+            .attr("height", 40)
+            .attr("x", d => -Math.max(120, d.name.length * 10 + 20) / 2)
+            .attr("y", -20)
+            .style("fill", "white")
+            .style("stroke", d => d.endpoint ? "red" : (d.args.length > 0 ? "#f4a742" : "#4285f4"))
+            .style("stroke-width", 2);
+    
+        node.append("text")
+            .attr("class", "function-name")
+            .text(d => d.name)
+            .attr("y", 5)
+            .attr("x", 0);
+    
+        node.on("mouseover", (event, d) => {
+            let tooltipContent = "";
+            if (d.args.length > 0) {
+                tooltipContent += `Arguments:<br>${d.args.join("<br>")}<br>`;
+            }
+            if (d.endpoint) {
+                tooltipContent += `Endpoint: ${d.endpoint}<br>`;
+            }
+            if (tooltipContent) {
+                tooltip.style("opacity", 1)
+                    .html(tooltipContent)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            }
+        })
+        .on("mouseout", () => {
+            tooltip.style("opacity", 0);
+        })
+        .on("mousemove", (event) => {
+            tooltip.style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        });
+    
+        let highlightedNodes = new Set(); 
+        const vscode = acquireVsCodeApi();
+       
+        function getFileNameFromPath(fullPath) {
+  const parts = fullPath.split('/');
+  return parts[parts.length - 1];  
+}
+
+        node.on("click", (event, d) => {
+            
+if (event.metaKey || event.ctrlKey) {
+    console.log("Cmd+Click event detected");
+
+    const callsToA = data.edges.filter(edge => edge.target.id === d.id);
+
+    if (callsToA.length > 0) {
+        d3.selectAll(".call-selection-menu").remove();
+
+const menu = d3.select("body").append("div")
+    .attr("class", "call-selection-menu")
+    .classed('custom-menu-style', true) 
+    .style("position", "absolute")
+    .style("left", (event.pageX + 10) + "px")
+    .style("top", (event.pageY + 10) + "px")
+    .style("max-height", "300px")  
+    .style("overflow-y", "auto")   
+    .style("display", "block");
+
+menu.append("div")
+    .attr("class", "close-menu")
+    .style("position", "absolute")
+    .style("top", "5px")
+    .style("right", "5px")
+    .style("cursor", "pointer")
+    .style("font-size", "16px")
+    .style("font-weight", "bold")
+    .style("color", "#333")
+    .text("X")
+    .on("click", function() {
+        menu.remove();  
+    });
+
+        callsToA.forEach(edge => {
+            const callingNode = edge.source;
+
+            console.log("Edge source:", edge.source);
+            console.log("Edge target:", edge.target);
+
+            console.log("Calling function (source):", edge.source.name);
+            console.log("Target function:", edge.target.name);
+
+            const fileName = getFileNameFromPath(edge.file);  
+
+            console.log("Source file:", fileName);  
+            console.log("Source line:", edge.line);
+
+            if (edge.file && edge.line) {
+                menu.append("div")
+                    .attr("class", "call-option")
+                    .style("padding", "5px")
+                    .style("cursor", "pointer")
+                    .text(`Called by ${callingNode.name} at ${fileName}:${edge.line}`)
+                    .on("click", function () {
+                        vscode.postMessage({
+                            command: 'openFile',
+                            file: edge.file,
+                            line: edge.line
+                        });
+                        menu.remove(); 
+                    });
+            } else {
+                menu.append("div")
+                    .attr("class", "call-option")
+                    .style("padding", "5px")
+                    .style("cursor", "pointer")
+                    .text(`Called by ${callingNode.name} (file/line missing)`)
+                    .style("color", "red");
+            }
+        });
+    }
+}
+                
+            link.style("stroke", "#999").style("stroke-opacity", 0.6);
+            node.select("rect").style("fill", "white"); 
+
+            const isHighlighted = highlightedNodes.has(d.id);
+
+            if (isHighlighted) {
+                highlightedNodes.delete(d.id);
+                node.style("opacity", 1);
+                link.style("opacity", 1);
+                return; 
+            } else {
+                highlightedNodes.add(d.id);
+            }
+
+            const path = [];
+            function findPath(nodeId, visited = new Set()) {
+                if (visited.has(nodeId)) {
+                    return; 
+                }
+                visited.add(nodeId); 
+
+                const currentNode = data.nodes.find(node => node.id === nodeId);
+                if (currentNode) {
+                    path.push(currentNode);
+                    const parentEdges = data.edges.filter(edge => edge.target.id === currentNode.id);
+                    parentEdges.forEach(edge => findPath(edge.source.id, visited)); 
+                }
+            }
+
+            findPath(d.id);
+            const pathIds = path.map(node => node.id); 
+
+            path.forEach(node => {
+                const parentEdges = data.edges.filter(edge => edge.target.id === node.id);
+                parentEdges.forEach(edge => {
+                    link.filter(l => l.source.id === edge.source.id && l.target.id === edge.target.id)
+                        .style("stroke", "red") 
+                        .style("stroke-opacity", 1);
+                });
+            });
+
+            node.filter(n => pathIds.includes(n.id))
+                .select("rect")
+                .style("fill", "orange"); 
+
+            node.style("opacity", d => pathIds.includes(d.id) ? 1 : 0);
+            link.style("opacity", d => pathIds.includes(d.source.id) && pathIds.includes(d.target.id) ? 1 : 0);
+        });
+    
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+    
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+    
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+    
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+    
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    
+        function searchNode() {
+            const query = document.getElementById("search").value.toLowerCase();
+            node.style("opacity", d => d.name.toLowerCase().includes(query) ? 1 : 0.2);
+            link.style("opacity", d => 
+                d.source.name.toLowerCase().includes(query) || d.target.name.toLowerCase().includes(query) ? 1 : 0.1
+            );
+        }
+    
+        node.on("contextmenu", (event, d) => {
+            event.preventDefault();
+    
+            data.nodes = data.nodes.filter(node => node.id !== d.id);
+            data.edges = data.edges.filter(edge => edge.source.id !== d.id && edge.target.id !== d.id);
+    
+            updateGraph();
+        });
+    
+        function updateGraph() {
+            link = link.data(data.edges, d => d.source.id + "-" + d.target.id);
+            link.exit().remove();
+            link = link.enter().append("line").attr("class", "link").merge(link);
+    
+            node = node.data(data.nodes, d => d.id);
+            node.exit().remove();
+    
+            const nodeEnter = node.enter().append("g")
+                .attr("class", d => d.args.length > 0 ? "node has-args" : (d.endpoint ? "node endpoint" : "node no-args"))
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .on("contextmenu", (event, d) => {
+                    event.preventDefault();
+                    data.nodes = data.nodes.filter(node => node.id !== d.id);
+                    data.edges = data.edges.filter(edge => edge.source.id !== d.id && edge.target.id !== d.id);
+                    updateGraph();
+                });
+    
+            nodeEnter.append("rect")
+                .attr("width", d => Math.max(120, d.name.length * 10 + 20))
+                .attr("height", 40)
+                .attr("x", d => -Math.max(120, d.name.length * 10 + 20) / 2)
+                .attr("y", -20)
+                .style("fill", "white")
+                .style("stroke", d => d.endpoint ? "red" : (d.args.length > 0 ? "#f4a742" : "#4285f4"))
+                .style("stroke-width", 2);
+    
+            nodeEnter.append("text")
+                .attr("class", "function-name")
+                .text(d => d.name)
+                .attr("y", 5)
+                .attr("x", 0);
+    
+            node = nodeEnter.merge(node);
+        }
+
+		// Function to filter nodes based on call threshold
+		function filterNodes() {
+			const threshold = parseInt(document.getElementById("call-threshold").value, 10);
+			if (isNaN(threshold)) {
+				alert("Please enter a valid number");
+				return;
+			}
+
+			// Count the number of times each node is called
+			const callCounts = {};
+			data.edges.forEach(edge => {
+				if (!callCounts[edge.target.id]) {
+					callCounts[edge.target.id] = 0;
+				}
+				callCounts[edge.target.id]++;
+			});
+
+			// Filter out nodes that are called more than the threshold
+			const filteredNodes = data.nodes.filter(node => !callCounts[node.id] || callCounts[node.id] <= threshold);
+			const filteredNodeIds = new Set(filteredNodes.map(node => node.id));
+
+			// Filter out edges connected to removed nodes
+			const filteredEdges = data.edges.filter(edge => filteredNodeIds.has(edge.source.id) && filteredNodeIds.has(edge.target.id));
+
+			// Update the data
+			data.nodes = filteredNodes;
+			data.edges = filteredEdges;
+
+			// Update the graph
+			updateGraph();
+		}
+    
+        const zoom = d3.zoom()
+    .on("zoom", (event) => g.attr("transform", event.transform)); 
+    
+        svg.call(zoom);
+    
+        function zoomIn() {
+            simulation.alpha(1).restart();
+            svg.transition().duration(500).call(zoom.scaleBy, 1.5);
+        }
+    
+        function zoomOut() {
+            simulation.alpha(1).restart();
+            svg.transition().duration(500).call(zoom.scaleBy, 0.7);
+        }
+    
+        function fitToScreen() {
+            const bounds = g.node().getBBox();
+            const scale = Math.min(width / bounds.width, height / bounds.height);
+            const translate = [width / 2 - (bounds.x + bounds.width / 2) * scale, height / 2 - (bounds.y + bounds.height / 2) * scale];
+            svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+        }
+
+		let showOnlyEndpoints = false;
+
+		function toggleEndpoints() {
+			showOnlyEndpoints = !showOnlyEndpoints;
+			document.getElementById("show-endpoints").innerText = showOnlyEndpoints ? "Show All Nodes" : "Show Only Endpoints";
+			updateVisibility();
+		}
+
+		function updateVisibility() {
+			node.style("opacity", d => {
+				if (showOnlyEndpoints) {
+					return d.endpoint ? 1 : 0.2;
+				} else {
+					return 1;
+				}
+			});
+			link.style("opacity", d => {
+				if (showOnlyEndpoints) {
+					return d.source.endpoint && d.target.endpoint ? 1 : 0.2;
+				} else {
+					return 1;
+				}
+			});
+		}
+
+        function showContextMenu(event, d) {
+            const contextMenu = document.getElementById("context-menu");
+            const contextMenuList = document.getElementById("context-menu-list");
+            contextMenuList.innerHTML = "";
+    
+            // Find where the function is called
+            const calls = data.edges.filter(edge => edge.target.id === d.id);
+    
+            if (calls.length > 0) {
+                calls.forEach(call => {
+                    const li = document.createElement("li");
+                    li.textContent = `Called by: ${call.source.id}`;
+                    contextMenuList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement("li");
+                li.textContent = "No calls found";
+                contextMenuList.appendChild(li);
+            }
+    
+            contextMenu.style.display = "block";
+            contextMenu.style.left = `${event.pageX}px`;
+            contextMenu.style.top = `${event.pageY}px`;
+    
+            document.addEventListener("click", () => {
+                contextMenu.style.display = "none";
+            }, { once: true });
+        }
+        let darkMode = false; // Default to light mode
+        function toggleTheme() {
+            darkMode = !darkMode;
+            document.body.classList.toggle("dark-mode");
+            document.getElementById("theme-toggle").textContent = darkMode ? "Light Mode" : "Dark Mode";
+            updateLabelColor();
+        }
+
+        function updateLabelColor() {
+            const labelColor = darkMode ? "#f4f4f9" : "#333";
+            document.documentElement.style.setProperty('--label-color', labelColor);
+        }
+
+        // Ensure the updateVisibility function is called on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            updateVisibility();
+            updateLabelColor();
+        });
+    </script>
+    
+    
+</body>
+</html>
