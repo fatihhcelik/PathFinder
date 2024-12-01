@@ -26,6 +26,10 @@ coverage
 # Executables
 tools/golang/analyzer
 
+# Extension
+
+*.vsix
+
 # nyc test coverage
 .nyc_output
 
