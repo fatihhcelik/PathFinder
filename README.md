@@ -13,7 +13,7 @@ PathFinder is a tool designed to visualize call graphs of source code. It parses
 <hr>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=ibJwDh1wq7Y>" target="_blank">
+  <a href="https://www.youtube.com/watch?v=ibJwDh1wq7Y" target="_blank">
     <img src="/demo/sc.png" alt="animated" />
   </a>
 </p>
