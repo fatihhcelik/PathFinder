@@ -177,7 +177,7 @@ $ ./analyzer ../../example/folder1/third.go|jq
 
 ## Installation (Easy Way)
 
-1. Just download the [PathFinder](https://marketplace.visualstudio.com/manage/publishers/fatihhcelik/extensions/pathfinder/hub) from marketplace.
+1. Just download the [PathFinder](https://marketplace.visualstudio.com/items?itemName=fatihhcelik.pathfinder) from marketplace.
 
 ## Code Structure
 
