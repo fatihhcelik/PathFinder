@@ -2,10 +2,11 @@
   "name": "pathfinder",
   "displayName": "pathfinder",
   "description": "PathFinder is an application that analyzes function calls within your code and generates a graph of your source code enriched with various extra details. With this extension, you can accelerate your secure code review processes and analyze your function calls more quickly and clearly.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fatihhcelik/PathFinder"},
+    "url": "https://github.com/fatihhcelik/PathFinder"
+  },
   "engines": {
     "vscode": "^1.95.0"
   },
