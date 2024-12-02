@@ -6,7 +6,7 @@ PathFinder is a tool designed to visualize call graphs of source code. It parses
  section.
 
  <p align="center">
-  <a href="https://marketplace.visualstudio.com/manage/publishers/fatihhcelik/extensions/pathfinder/hub>" target="_blank">
+  <a href="https://marketplace.visualstudio.com/manage/publishers/fatihhcelik/extensions/pathfinder/hub" target="_blank">
     Download from the Vscode Marketplace
   </a>
 </p>
