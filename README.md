@@ -1,7 +1,16 @@
+
+
 # PathFinder
 
 PathFinder is a tool designed to visualize call graphs of source code. It parses source files to extract function declarations and calls, and then generates a visual representation of the call graph. This tool is particularly useful for understanding the structure and flow of the applications, especially in complex codebases. Additionally, the main reason I developed this application/extension is to assist me during my secure code review process. For detailed usage scenarios, please refer to the [real world use cases](#real-world-use-cases)
  section.
+
+ <p align="center">
+  <a href="https://marketplace.visualstudio.com/manage/publishers/fatihhcelik/extensions/pathfinder/hub>" target="_blank">
+    Download from the Vscode Marketplace
+  </a>
+</p>
+<hr>
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=ibJwDh1wq7Y>" target="_blank">
@@ -141,7 +150,7 @@ $ ./analyzer ../../example/folder1/third.go|jq
 * You can spot favorite functions. :)
 * I'm not sure if it's necessary, but you can spot functions defined in the codebase but not used anywhere—floating aimlessly within the graph. :)
 
-## Installation
+## Installation (Hard Way)
 
 1. **Clone the Repository**:
    ```bash
@@ -165,6 +174,10 @@ $ ./analyzer ../../example/folder1/third.go|jq
    - Choose your project folder to be analyzed. 
    - Hit "Command + Shift + P" and search for "Analyze Call Graph"
    - Choose one of the options, "Active File" or "All Files in the Project".
+
+## Installation (Easy Way)
+
+1. Just download the [PathFinder](https://marketplace.visualstudio.com/manage/publishers/fatihhcelik/extensions/pathfinder/hub) from marketplace.
 
 ## Code Structure
 
