@@ -181,7 +181,7 @@ $ ./analyzer ../../example/folder1/third.go|jq
 
 ## Code Structure
 
-- **Main Logic**: The main logic for parsing and generating the call graph is located in `tools/analyzer.go`.
+- **Main Logic**: The main logic for parsing and generating the call graph is located in `tools/golang/analyzer.go`.
 - **Visualization**: The HTML and JavaScript for the interactive visualization are located in `media/graph.html`.
 
 ## Contributing
